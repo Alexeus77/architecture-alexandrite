@@ -1,0 +1,71 @@
+-- Мотивация
+Мониторинг системы является не только неотъемлимой частью на этапе эксплуатации и сопровождения, но и необходимым этапом
+анализа текущих проблем системы, выбора способа устранения этих проблем, отладки и получения обратной связи после внесенных изменений.
+
+-- Выбор подхода к мониторингу (в порядке приоритетов)
+1) Прежде всего предлагаю поставить на мониторинг сервис RabbitMq как связующее звено системы с целью получения первоначальных данных о 
+ёё состоянии и первчиного выявления источников проблем. Здесь получение метрик
+Number of dead-letter-exchange letters in RabbitMQ
+Number of message in flight in RabbitMQ
+поможет оценить как текущую загрузку сервиса, так и относительное число "сбойных" сообщений
+
+2) К сервису MES API применить подход к мониторингу USE. Данный подход позволит сфокусироваться на мониторинге 
+предположительно высокозагруженного сервиса, перегрузка которого чревата потерями заказов. Метрики:
+
+CPU % for MES API
+Memory Utilisation for MES API
+Эти метрики позволят оценить загрузку сервиса вычислительными задачами (утилизация)
+
+Response time (latency) for MES API
+Number of HTTP 200 for MES API
+Number of HTTP 500 for MES API
+Позволят оценить насыщенность для сервиса путём оценки пиковых показателей для latency, а также соотношения числа ошибок к положительным ответам.
+Также последняя метрика покажет число ошибок и его динамику.
+
+3) К сервису Shop API применить подход "Четыре золотых сигнала". Метрики:
+Response time (latency) for shop API
+Number of HTTP 200 for shop API
+Number of HTTP 500 for shop API
+Эти метрики позволят оценить возможную перегрузку системы и пользовательский опыт
+Number of simultanious sessions for shop API
+Позволит оценить потребность в сервисе в динамике
+Kb tranferred (received) for shop API
+Позволит оценить потребность в пропускной способности и хранении по данным, а также по введению ограничений на прием данных
+
+4) Подход RED применим к CRM API:
+Number of requests (RPS) for CRM API
+Number of HTTP 200 for CRM API
+Number of HTTP 500 for CRM API
+Number of simultanious sessions for CRM API
+
+5) Оценим загрузку хранилищ:
+Size of S3 storage
+Size of shop db instance
+Size of MES db instance
+
+6) Оценим нагрузку на базы данных со стороны сервисов:
+Number of connections for shop db instance
+Number of connections for MES db instance
+
+План действий
+1) Проведём анализ настроек RabbitMQ и приведём настройки согласно плану
+2) Добавим к системе сервис Prometheus и настроим мониторинг с помощью RabbitMQ Prometheus Exporter. Добавим сервис Grafana и 
+настроим дашборд с метриками
+rabbitmq_queue_messages_ready{queue="dlq-name"} > 0
+rabbitmq_queue_messages_total{queue=~".*dlq.*"}
+3) Сделаем алерт в Grafana на пороговое значение ready message 
+rabbitmq_queue_messages_ready{queue="dlq-name"} > 10
+4) Внедрим в сервис MES API мониторинг через Prometheus + дашборд Grafana метрик по плану выше
+5) Внедрим в сервис Shop API мониторинг через Prometheus + дашборд Grafana метрик по плану выше
+6) Внедрим в сервис CRM API мониторинг через Prometheus + дашборд Grafana метрик по плану выше
+7) Добавим в AWS CloudWatch Exporter для снятия метрики загрузки хранилища S3. 
+Добавим мониторинг метрики в Prometheus и в дашборд Grafana. Добавим алерт на размер хранилища
+8) Добавим postgres_exporter для получения метрики загрузки баз данных postgres. Добавим мониторинг метрики в Prometheus и в дашборд Grafana
+9) Используем postgres_exporter для получения метрики числа активных соединений баз данных postgres. Добавим мониторинг метрики в Prometheus и в дашборд Grafana
+
+
+
+
+
+
+
